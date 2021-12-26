@@ -5,11 +5,11 @@
 
 using namespace std;
 
-void randomRowOperation(float *src, float *dest, int length){
-    float randomScalar = rand() % 3 + 1 ;    
+void randomRowOperation(double *src, double *dest, int length){
+    double randomScalar = rand() % 3 + 1 ;    
     int randomOperation = rand() % 4 + 1;
 
-    float newNumber = 0 ;
+    double newNumber = 0 ;
     for(int i = 0; i < length ; i++){
         
         if(randomOperation == 1) 
@@ -30,15 +30,38 @@ void randomRowOperation(float *src, float *dest, int length){
     }
 }
 
+void saveMatrix(double** matrix, int rowSize){
+    char outputFilename[50];
+    snprintf(outputFilename, sizeof(char)*50, "../dataset/matrix_n_%i.txt", rowSize);
+    
+    FILE* file = fopen(outputFilename, "w");
+    fprintf(file,"%d", rowSize);
+    for(int i = 0 ; i < rowSize; i++){
+        for(int j = 0 ; j < rowSize + 1; j++){
+            if( j == 0 )   {
+                fprintf(file, "\n");
+            }
+            if(matrix[i][j] == 0){
+                fprintf(file, "%f", abs(matrix[i][j]));
+            }else{
+                fprintf(file, "%f" , matrix[i][j]);
+            }
+            fprintf(file, " ");
+
+        }
+    }
+    fclose(file);
+}
+
 int main(int argc, char const *argv[]) {
     int rowSize = stoi(argv[1]);
     srand(time(NULL));
     int colSize = rowSize + 1 ;
     
-    float* matrix[rowSize];
+    double* matrix[rowSize];
     for (int i = 0; i < rowSize; i++)
     {
-        matrix[i] = (float*)malloc(colSize * sizeof(float));
+        matrix[i] = (double*)malloc(colSize * sizeof(double));
     }
 
     for(int i = 0 ; i< rowSize; i++)
@@ -48,7 +71,7 @@ int main(int argc, char const *argv[]) {
             if(i == j){
                 matrix[i][j] = 1;
             }else if (j == rowSize){
-                matrix[i][j] = rand() % 5;
+                matrix[i][j] = rand() % 3;
             }
             else{
                 matrix[i][j] = 0;
@@ -56,13 +79,13 @@ int main(int argc, char const *argv[]) {
         }
     }   
 
-    for(int i = 0 ; i < rowSize ; i++ ) {
+    // for(int i = 0 ; i < rowSize ; i++ ) {
 
-        for(int j = 0 ; j < colSize; j++){
-            cout<<matrix[i][j] <<" " ;
-        }
+    //     for(int j = 0 ; j < colSize; j++){
+    //         cout<<matrix[i][j] <<" " ;
+    //     }
         
-    }
+    // }
    
     for(int i= 0 ; i < rowSize * 8 ; i++){
         int row1 = rand() % rowSize ;
@@ -73,30 +96,16 @@ int main(int argc, char const *argv[]) {
         randomRowOperation(matrix[row1], matrix[row2], colSize);
     }
     
-    for(int i = 0 ; i < rowSize ; i++ ) {
+    // for(int i = 0 ; i < rowSize ; i++ ) {
 
-        for(int j = 0 ; j < colSize; j++){
-            printf ("%f ", matrix[i][j]);
-        }
+    //     for(int j = 0 ; j < colSize; j++){
+    //         printf ("%f ", matrix[i][j]);
+    //     }
     
-    }
+    // }
 
+    saveMatrix(matrix, rowSize);
 
-    ofstream matrixFile;
-    matrixFile.open ("../dataset/matrix_n_"+to_string(rowSize)+".txt", ios::trunc);
-    matrixFile << rowSize << endl ;
-    for(int i = 0 ; i< rowSize ; i++)
-    {
-        for(int j = 0; j< colSize ; j++)
-        {
-            matrixFile << matrix[i][j] << " ";
-        }
-        matrixFile << endl ;
-
-    }
-    matrixFile.close();
-    
-
-
+    return 0 ;
 }
 

@@ -12,6 +12,7 @@ void PrintMatrix(float *matrix, int n);
 // This kernel function takes the current pivot value and divide all indices of row with this value to make diagonels(pivots) 1 
 __global__ void MakePivotsOne(float* matrix, int rowSize, int colSize, int currCol, float pivotValue)
 {
+    
 	int tID = currCol * colSize + threadIdx.x ;
 	if ( tID < rowSize * colSize )
 	{
@@ -148,11 +149,12 @@ int main(int argc, char const *argv[]) {
     cudaEvent_t start, stop; // calculate performance
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
-    cudaEventRecord(start);
-    cudaEventRecord(stop);
+
 
     printf("Gauss Jordan Elimination method calculation is started! \n");
 
+    cudaEventRecord(start);
+    
     for(int currCol = 0; currCol < rowSize  ; currCol++ )
     {
         float temp = h_Matrix[ currCol * colSize + currCol ];
@@ -188,7 +190,7 @@ int main(int argc, char const *argv[]) {
 		}
 
     }
-
+    cudaEventRecord(stop);
     // Free device global memory
     err = cudaFree(d_Matrix);
     if (err != cudaSuccess)
