@@ -1,13 +1,7 @@
-#include <bits/stdc++.h>
-#include <stdio.h>
 #include <time.h>
-#include <stdlib.h>
 #include <cuda_runtime.h>
+#include "util.h"
 using namespace std;
-
-
-void PrintMatrix(double *matrix, int n);
-__global__ void PrintMatrixGPU(double *matrix, int n);
 
 
 // This kernel function takes the current pivot value and divide all indices of row with this value to make diagonels(pivots) 1 
@@ -30,15 +24,13 @@ __global__ void MakePivotsOne(double* matrix, int rowSize, int colSize, int curr
 }
 
 // This kernel function makes all top and bottom values of pivot's column zero
-__global__ void MakePivotsColumnZero(double* matrix, int rowSize, int colSize, int currCol, int currRow) 
-{
-    int blockNumInGrid   = blockIdx.x  + gridDim.x  * blockIdx.y ;
-    int threadNumInBlock = threadIdx.x + blockDim.x * threadIdx.y ; 
-    int threadsPerBlock  = blockDim.x * blockDim.y ;
-    int index = blockNumInGrid * threadsPerBlock + threadNumInBlock ;
+__global__ void MakePivotsColumnZero(double* matrix, int rowSize, int colSize, int currCol) 
+{    
+    int index = threadIdx.x ;
+    int currRow = blockIdx.x;
 
     int tID = currRow * colSize +  index;
-
+  
     __shared__ double rateWithPivot; 
     rateWithPivot = matrix[ currRow * colSize + currCol ] ;
 
@@ -50,21 +42,6 @@ __global__ void MakePivotsColumnZero(double* matrix, int rowSize, int colSize, i
     }
     
 }
-
-void PrintMatrix(double *a, int n)
-{   
-    printf("\n") ;
-    for (int i = 0; i < n -1   ; i++) 
-    {
-        for (int j = 0; j < n; j++){
-            printf("%.3f ",  a[ i * n + j ]) ;
-        }
-        
-        printf("\n")  ;
-    }
-    printf("\n") ;
-}
-
 
 __global__ void PrintMatrixGPU(double *a, int n)
 {   
@@ -79,71 +56,6 @@ __global__ void PrintMatrixGPU(double *a, int n)
     }
     printf("\n") ;
 }
-
-
-void createMatrix(double *matrix, int rowSize, bool input){
-    char filename[50];
-    if(input){
-    snprintf(filename, sizeof(char)*50, "../dataset/matrix_n_%i.txt", rowSize);    
-    }else{
-    snprintf(filename, sizeof(char)*50, "../dataset/output_matrix_%i.txt", rowSize);
-    }
-    FILE* file = fopen (filename, "r");
-    int matrixSize = 0;
-    fscanf (file, " %d", &matrixSize);
-    for(int i = 0 ; i < rowSize * (rowSize + 1 ); i++)
-    {   
-        double number = 0 ;
-        fscanf(file, "%lf",&number);
-        matrix[i] = number;
-    }
-    fclose (file);
-}
-
-void saveMatrix(double* matrix, int rowSize){
-    char outputFilename[50];
-    snprintf(outputFilename, sizeof(char)*50, "../dataset/output_matrix_%i.txt", rowSize);
-    
-    FILE* file = fopen(outputFilename, "w");
-    fprintf(file,"%d", rowSize);
-    for(int i = 0 ; i < rowSize * (rowSize+1) ; i++){
-        if(i % (rowSize + 1) == 0){
-            fprintf(file, "\n");
-        }
-        if(matrix[i] == 0){
-            fprintf(file, "%f", abs(matrix[i]));
-        }else{
-            fprintf(file, "%f" , matrix[i]);
-        }
-        fprintf(file, " ");
-    }
-    fclose(file);
-}
-
-// This function verify the results of variants with putting the output values to input matrix and compare with last column. 
-void checkMatrix(int rowSize){
-    size_t size = rowSize * (rowSize + 1) * sizeof(double);
-    double* inputMatrix = (double*) malloc(size);
-    double* outputMatrix = (double*) malloc(size)   ;
-
-    createMatrix(inputMatrix, rowSize, true);
-    createMatrix(outputMatrix, rowSize, false);
-    int colSize = rowSize + 1 ;
-    for(int i = 0 ; i < rowSize ; i++){
-        double actualValue = 0; 
-        for(int j = 0; j < rowSize ; j++ )
-        { 
-            actualValue += inputMatrix[ i * colSize + j ] * outputMatrix[ j * colSize + colSize - 1] ;
-        }
-        double expectedValue = inputMatrix[i * colSize + colSize - 1] ; 
-        if(actualValue - expectedValue >= 1e-2){
-            printf("There is a  difference( > 1e-2 )!. Row Number: %d\n", i+1);
-            printf("Actual value -> %f\nExpected value -> %f\n", actualValue, expectedValue);
-        }
-    }
-}
-
-
 
 int main(int argc, char const *argv[]) {
 {
@@ -197,7 +109,7 @@ int main(int argc, char const *argv[]) {
     printf("Gauss Jordan Elimination method calculation is started! \n");
     cudaEventRecord(start);
   
-
+    clock_t start_time = clock(); 
     for(int currCol = 0; currCol < rowSize  ; currCol++ )
     {   
         
@@ -206,12 +118,8 @@ int main(int argc, char const *argv[]) {
         double currentPivotValue = h_Matrix[ currCol * colSize + currCol ];
         MakePivotsOne<<<gridShape, blockShape>>>(d_Matrix, rowSize, colSize, currCol, currentPivotValue);
         cudaDeviceSynchronize();
-        
-        
-        
-        // PrintMatrixGPU<<<1,1>>>(d_Matrix, colSize);
-		// Check for errors
-        
+
+		// Check for errors  
 		err = cudaGetLastError();
 		if (err != cudaSuccess) 
 		{
@@ -221,11 +129,7 @@ int main(int argc, char const *argv[]) {
 			return false;
 		}
         
-        for( int i = 0 ; i < rowSize ; i++){
-            MakePivotsColumnZero<<<gridShape, blockShape>>>(d_Matrix, rowSize, colSize, currCol, i);
-            cudaDeviceSynchronize();
-            
-        }
+        MakePivotsColumnZero<<<rowSize, colSize>>>(d_Matrix, rowSize, colSize, currCol);
         
         // copy only next pivot to host to calculate temp accurately 
         if((currCol + 1)* colSize + (currCol+1) < colSize * rowSize)
@@ -243,8 +147,9 @@ int main(int argc, char const *argv[]) {
 		}
 
     }
-    cudaEventRecord(stop);
-    cudaEventSynchronize(stop);
+
+    clock_t total_time = clock()- start_time; 
+   
     err = cudaMemcpy(h_Matrix, d_Matrix,size, cudaMemcpyDeviceToHost); // copy device matrix into host matrix to take correct pivot value 
     
     
@@ -256,15 +161,10 @@ int main(int argc, char const *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    
-
-    float milliseconds = 0;
-    cudaEventElapsedTime(&milliseconds, start, stop);
     printf("Gauss Jordan Elimination method calculation is finished! \n\n");
-    printf("Total milliseconds: %f\n\n", milliseconds);
-
-    //printf("Row echelon form of input matrix:\n") ;
-    //PrintMatrix(h_Matrix,colSize);
+    
+    float total_ms =  float( total_time) * 1000 / CLOCKS_PER_SEC;
+    printf("Time taken %f milliseconds for %d x %d matrix with improved CUDA implementation!\n\n",  total_ms, rowSize, rowSize);
 
     saveMatrix(h_Matrix,rowSize);
     checkMatrix(rowSize);
@@ -272,6 +172,6 @@ int main(int argc, char const *argv[]) {
     // Free host memory
     free(h_Matrix);
 
-    printf("******************Program Finished!*****************\n");
+    printf("\n******************Program Finished!*****************\n");
 return 0;
 }

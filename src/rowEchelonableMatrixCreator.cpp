@@ -79,14 +79,6 @@ int main(int argc, char const *argv[]) {
         }
     }   
 
-    // for(int i = 0 ; i < rowSize ; i++ ) {
-
-    //     for(int j = 0 ; j < colSize; j++){
-    //         cout<<matrix[i][j] <<" " ;
-    //     }
-        
-    // }
-   
     for(int i= 0 ; i < rowSize * 8 ; i++){
         int row1 = rand() % rowSize ;
         int row2 = rand() % rowSize ;
@@ -96,14 +88,6 @@ int main(int argc, char const *argv[]) {
         randomRowOperation(matrix[row1], matrix[row2], colSize);
     }
     
-    // for(int i = 0 ; i < rowSize ; i++ ) {
-
-    //     for(int j = 0 ; j < colSize; j++){
-    //         printf ("%f ", matrix[i][j]);
-    //     }
-    
-    // }
-
     saveMatrix(matrix, rowSize);
 
     return 0 ;
